@@ -5,6 +5,8 @@ import "fmt"
 import "os"
 import "strings"
 import "io/ioutil"
+import "net/http"
+import "encoding/json"
 
 var movieName = flag.String("movie", "", "movie name")
 var keyPath   = flag.String("key", "key.txt", "API key file path")
@@ -31,8 +33,26 @@ func readApiKey(filepath string) (string, error) {
 func requestMoviePicture(movieName, apiKey string) (string, error) {
 	movieName = strings.Replace(movieName, " ", "+", -1)
 	url := fmt.Sprintf(BASEURL, movieName, apiKey)
-	fmt.Println(url)
-	return "", nil
+
+	client := &http.Client{}
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", err
+	}
+	if resp.Body == nil {
+		return "", nil
+	}
+	defer resp.Body.Close()
+	jb, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	data := make(map[string]interface{})
+	if err = json.Unmarshal(jb, &data) {
+		return "", err
+	}
+	fmt.Println(data)
+	return , nil
 }
 
 func main() {
