@@ -12,6 +12,12 @@ var movieName = flag.String("movie", "", "movie name")
 var keyPath   = flag.String("key", "key.txt", "API key file path")
 var BASEURL   = "http://www.omdbapi.com/?t=%s&apikey=%s"
 
+type omdbMovie struct {
+	Title    string `json:"Title"`
+	Director string `json:"Director"`
+	Poster   string `json:"Poster"`
+}
+
 func parseFlags() bool {
 	flag.Parse()
 	if len(*movieName) == 0 {
@@ -30,29 +36,33 @@ func readApiKey(filepath string) (string, error) {
 	return apiKey, err
 }
 
-func requestMoviePicture(movieName, apiKey string) (string, error) {
+func getMovieData(movieName, apiKey string) (*omdbMovie, error) {
 	movieName = strings.Replace(movieName, " ", "+", -1)
 	url := fmt.Sprintf(BASEURL, movieName, apiKey)
 
 	client := &http.Client{}
 	resp, err := client.Get(url)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	if resp.Body == nil {
-		return "", nil
+		return nil, nil
 	}
 	defer resp.Body.Close()
 	jb, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	data := make(map[string]interface{})
-	if err = json.Unmarshal(jb, &data) {
-		return "", err
+	data := new(omdbMovie)
+	if err = json.Unmarshal(jb, data); err != nil {
+		return nil, err
 	}
-	fmt.Println(data)
-	return , nil
+	return data, nil
+}
+
+func getPoster(movie *omdbMovie) {
+	posterURL := movie.Poster
+	fmt.Println(posterURL)
 }
 
 func main() {
@@ -64,5 +74,9 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	requestMoviePicture(*movieName, apiKey)
+	movie, err := getMovieData(*movieName, apiKey)
+	if err != nil {
+		panic(err)
+	}
+	getPoster(movie)
 }
