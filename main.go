@@ -8,14 +8,16 @@ import "io/ioutil"
 import "net/http"
 import "encoding/json"
 
-var movieName = flag.String("movie", "", "movie name")
-var keyPath   = flag.String("key", "key.txt", "API key file path")
-var BASEURL   = "http://www.omdbapi.com/?t=%s&apikey=%s"
+var movieName   = flag.String("movie", "", "movie name")
+var keyPath     = flag.String("key", "key.txt", "API key file path")
+var releaseYear = flag.String("year", "", "Year of Release")
+var BASEURL     = "http://www.omdbapi.com/?apikey=%s&t=%s"
 
 type omdbMovie struct {
 	Title    string `json:"Title"`
 	Director string `json:"Director"`
 	Poster   string `json:"Poster"`
+	Year     string `json:"Year"`
 }
 
 func parseFlags() bool {
@@ -36,14 +38,19 @@ func readApiKey(filepath string) (string, error) {
 	return apiKey, err
 }
 
-func getMovieData(movieName, apiKey string) (*omdbMovie, error) {
+func getMovieData(movieName, releaseYear, apiKey string) (*omdbMovie, error) {
 	movieName = strings.Replace(movieName, " ", "+", -1)
-	url := fmt.Sprintf(BASEURL, movieName, apiKey)
-
+	url := fmt.Sprintf(BASEURL, apiKey, movieName)
+	if releaseYear != "" {
+		url = url + fmt.Sprintf("&y=%s", releaseYear)
+	}
 	client := &http.Client{}
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("StatusCode %d", resp.StatusCode)
 	}
 	if resp.Body == nil {
 		return nil, nil
@@ -60,9 +67,21 @@ func getMovieData(movieName, apiKey string) (*omdbMovie, error) {
 	return data, nil
 }
 
-func getPoster(movie *omdbMovie) {
+func getPoster(movie *omdbMovie) ([]byte, error) {
 	posterURL := movie.Poster
-	fmt.Println(posterURL)
+	resp, err := http.Get(posterURL)
+	if err != nil {
+		return nil,err
+	}
+	if resp.StatusCode != 200 {
+		return nil,fmt.Errorf("StatusCode: %d", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil,err
+	}
+	return body, nil
 }
 
 func main() {
@@ -74,9 +93,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	movie, err := getMovieData(*movieName, apiKey)
+	movie, err := getMovieData(*movieName, *releaseYear, apiKey)
 	if err != nil {
 		panic(err)
 	}
-	getPoster(movie)
+	_, err = getPoster(movie)
+	if err != nil {
+		panic(err)
+	}
 }

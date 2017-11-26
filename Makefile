@@ -1,8 +1,8 @@
 BUILDER=go build
 INSTALLER=go install
-REPOSITORY=github.com/arnaldomf/moviture
+REPOSITORY=github.com/arnaldomf/movieture
 
-movieture:
+movieture: main.go
 	$(BUILDER) $(REPOSITORY)
 
 install: movieture
